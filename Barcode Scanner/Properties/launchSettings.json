@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Barcode Scanner (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Barcode Scanner (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
