@@ -73,6 +73,8 @@ namespace Barcode_Scanner
 
         private void liveScanButton_Click(object sender, RoutedEventArgs e) {
             System.Diagnostics.Debug.WriteLine("live scan Clicked");
+            CameraPanel.Visibility = Visibility.Visible;
+            DefaultPanel.Visibility = Visibility.Collapsed;
         }
 
         private void InitBarcodeReader() {

@@ -8,11 +8,21 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Button x:Name="pickImageButton" Click="pickImageButton_Click">Pick an image to read barcodes</Button>
-            <Button x:Name="liveScanButton" Click="liveScanButton_Click">Click Me</Button>
+        <StackPanel x:Name="DefaultPanel" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Button x:Name="pickImageButton" Click="pickImageButton_Click">Pick an image to read barcodes</Button>
+                <Button x:Name="liveScanButton" Click="liveScanButton_Click">Live scan</Button>
+            </StackPanel>
+            <TextBlock x:Name="decodingResultsTextBox" />
         </StackPanel>
-        <TextBlock x:Name="decodingResultsTextBox" />
+        <StackPanel x:Name="CameraPanel" Visibility="Collapsed" >
+            <MediaPlayerElement
+            x:Name="player"
+            Width="600"
+            Height="600"
+            AutoPlay="True" />
+        </StackPanel>
     </StackPanel>
+    
     
 </Window>
