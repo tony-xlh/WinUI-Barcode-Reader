@@ -10,10 +10,10 @@
     <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel x:Name="DefaultPanel" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button x:Name="pickImageButton" Click="pickImageButton_Click">Pick an image to read barcodes</Button>
-                <Button x:Name="liveScanButton" Click="liveScanButton_Click">Live scan</Button>
+                <Button x:Name="PickImageButton" Click="PickImageButton_Click">Pick an image to read barcodes</Button>
+                <Button x:Name="LiveScanButton" Click="LiveScanButton_Click">Live scan</Button>
             </StackPanel>
-            <TextBlock x:Name="decodingResultsTextBox" />
+            <TextBlock x:Name="DecodingResultsTextBox" />
         </StackPanel>
         <StackPanel x:Name="CameraPanel" Visibility="Collapsed" >
             <MediaPlayerElement

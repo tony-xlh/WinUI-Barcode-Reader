@@ -36,7 +36,7 @@ namespace Barcode_Scanner
     /// </summary>
     public sealed partial class MainWindow : Window
     {
-        public BarcodeReader reader { get; set; }
+        public BarcodeReader Reader { get; set; }
         private MediaCapture _capture;
         private MediaFrameReader _frameReader;
         private MediaSource _mediaSource;
@@ -48,7 +48,7 @@ namespace Barcode_Scanner
             this.InitBarcodeReader();
         }
 
-        private async void pickImageButton_Click(object sender, RoutedEventArgs e)
+        private async void PickImageButton_Click(object sender, RoutedEventArgs e)
         {
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             // Get the current window's HWND by passing in the Window object
@@ -65,9 +65,9 @@ namespace Barcode_Scanner
 
             Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
             if (file != null) {
-                TextResult[] results = reader.DecodeFile(file.Path, "");
+                TextResult[] results = Reader.DecodeFile(file.Path, "");
                 System.Diagnostics.Debug.WriteLine(results.Length);
-                decodingResultsTextBox.Text = BuildResultsString(results);
+                DecodingResultsTextBox.Text = BuildResultsString(results);
             }
         }
 
@@ -88,7 +88,7 @@ namespace Barcode_Scanner
             return sb.ToString();
         }
 
-        private async void liveScanButton_Click(object sender, RoutedEventArgs e) {
+        private async void LiveScanButton_Click(object sender, RoutedEventArgs e) {
             ToggleCameraPanel(true);
             await InitializeCaptureAsync();
         }
@@ -143,12 +143,12 @@ namespace Barcode_Scanner
                 await encoder.FlushAsync();
                 var bytes = new byte[stream.Size];
                 await stream.ReadAsync(bytes.AsBuffer(), (uint)stream.Size, InputStreamOptions.None);
-                TextResult[] results = reader.DecodeFileInMemory(bytes, "");
+                TextResult[] results = Reader.DecodeFileInMemory(bytes, "");
                 System.Diagnostics.Debug.WriteLine(results.Length);
                 if (results.Length > 0)
                 {
                     DispatcherQueue.TryEnqueue(async () => { 
-                        decodingResultsTextBox.Text = BuildResultsString(results);
+                        DecodingResultsTextBox.Text = BuildResultsString(results);
                         await TerminateCaptureAsync();
                         ToggleCameraPanel(false);
                     });
@@ -185,8 +185,8 @@ namespace Barcode_Scanner
                 // Add your code for license error processing;
                 System.Diagnostics.Debug.WriteLine(errorMsg);
             }
-            reader = new BarcodeReader();
-            System.Diagnostics.Debug.WriteLine(reader.GetVersion());
+            Reader = new BarcodeReader();
+            System.Diagnostics.Debug.WriteLine(Reader.GetVersion());
         }
     }
 }
