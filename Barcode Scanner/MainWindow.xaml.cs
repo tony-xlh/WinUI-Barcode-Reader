@@ -62,6 +62,8 @@ namespace Barcode_Scanner
             picker.FileTypeFilter.Add(".jpg");
             picker.FileTypeFilter.Add(".jpeg");
             picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".pdf");
 
             Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
             if (file != null) {
