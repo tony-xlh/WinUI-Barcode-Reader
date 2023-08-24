@@ -18,8 +18,6 @@
         <StackPanel x:Name="CameraPanel" Visibility="Collapsed" >
             <MediaPlayerElement
             x:Name="player"
-            Width="600"
-            Height="600"
             AutoPlay="True" />
         </StackPanel>
     </StackPanel>

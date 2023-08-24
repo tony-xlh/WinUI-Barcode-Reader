@@ -15,6 +15,16 @@ using Windows.Foundation.Collections;
 using Dynamsoft;
 using Dynamsoft.DBR;
 using System.Text;
+using System.Reflection.PortableExecutable;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Windows.Media.Capture.Frames;
+using Windows.Media.Capture;
+using Windows.Media.Core;
+using Windows.Media.MediaProperties;
+using Windows.Storage.Streams;
+using System.Buffers.Text;
+using Windows.Graphics.Imaging;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -27,6 +37,11 @@ namespace Barcode_Scanner
     public sealed partial class MainWindow : Window
     {
         public BarcodeReader reader { get; set; }
+        private MediaCapture _capture;
+        private MediaFrameReader _frameReader;
+        private MediaSource _mediaSource;
+        private bool decoding = false;
+
         public MainWindow()
         {
             this.InitializeComponent();
@@ -52,29 +67,114 @@ namespace Barcode_Scanner
             if (file != null) {
                 TextResult[] results = reader.DecodeFile(file.Path, "");
                 System.Diagnostics.Debug.WriteLine(results.Length);
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine("Found "+results.Length
-                    .ToString() + " result(s).");
-                for (int i = 0; i < results.Length; i++)
-                {
-                    TextResult result = results[i];
-                    sb.Append(i + 1);
-                    sb.Append(". ");
-                    sb.Append(result.BarcodeFormatString);
-                    sb.Append(": ");
-                    sb.Append(result.BarcodeText);
-                    sb.Append('\n');
-                }
-                decodingResultsTextBox.Text = sb.ToString();
+                decodingResultsTextBox.Text = BuildResultsString(results);
             }
-            System.Diagnostics.Debug.WriteLine(file.DisplayName);
-            System.Diagnostics.Debug.WriteLine("Clicked");
         }
 
-        private void liveScanButton_Click(object sender, RoutedEventArgs e) {
-            System.Diagnostics.Debug.WriteLine("live scan Clicked");
-            CameraPanel.Visibility = Visibility.Visible;
-            DefaultPanel.Visibility = Visibility.Collapsed;
+        private string BuildResultsString(TextResult[] results) {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Found " + results.Length
+                .ToString() + " result(s).");
+            for (int i = 0; i < results.Length; i++)
+            {
+                TextResult result = results[i];
+                sb.Append(i + 1);
+                sb.Append(". ");
+                sb.Append(result.BarcodeFormatString);
+                sb.Append(": ");
+                sb.Append(result.BarcodeText);
+                sb.Append('\n');
+            }
+            return sb.ToString();
+        }
+
+        private async void liveScanButton_Click(object sender, RoutedEventArgs e) {
+            ToggleCameraPanel(true);
+            await InitializeCaptureAsync();
+        }
+
+        private void ToggleCameraPanel(bool on) 
+        {
+            CameraPanel.Visibility = on ? Visibility.Visible: Visibility.Collapsed;
+            DefaultPanel.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private async Task InitializeCaptureAsync()
+        {
+            // get first capture device (change this if you want)
+            var sourceGroup = (await MediaFrameSourceGroup.FindAllAsync())?.FirstOrDefault();
+            if (sourceGroup == null)
+                return; // not found!
+
+            // init capture & initialize
+            _capture = new MediaCapture();
+            await _capture.InitializeAsync(new MediaCaptureInitializationSettings
+            {
+                SourceGroup = sourceGroup,
+                SharingMode = MediaCaptureSharingMode.SharedReadOnly,
+                MemoryPreference = MediaCaptureMemoryPreference.Cpu, // to ensure we get SoftwareBitmaps
+            });
+
+            // initialize source
+            var source = _capture.FrameSources[sourceGroup.SourceInfos[0].Id];
+
+            // create reader to get frames & pass reader to player to visualize the webcam
+            _frameReader = await _capture.CreateFrameReaderAsync(source, MediaEncodingSubtypes.Bgra8);
+            _frameReader.FrameArrived += OnFrameArrived;
+            await _frameReader.StartAsync();
+
+            _mediaSource = MediaSource.CreateFromMediaFrameSource(source);
+            player.Source = _mediaSource;
+        }
+
+        private async void OnFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
+        {
+            var bmp = sender.TryAcquireLatestFrame()?.VideoMediaFrame?.SoftwareBitmap;
+            if (bmp == null)
+                return;
+            if (decoding == true) {
+                return;
+            }
+            decoding = true;
+            using (var stream = new InMemoryRandomAccessStream())
+            {
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+                encoder.SetSoftwareBitmap(bmp);
+                await encoder.FlushAsync();
+                var bytes = new byte[stream.Size];
+                await stream.ReadAsync(bytes.AsBuffer(), (uint)stream.Size, InputStreamOptions.None);
+                TextResult[] results = reader.DecodeFileInMemory(bytes, "");
+                System.Diagnostics.Debug.WriteLine(results.Length);
+                if (results.Length > 0)
+                {
+                    DispatcherQueue.TryEnqueue(async () => { 
+                        decodingResultsTextBox.Text = BuildResultsString(results);
+                        await TerminateCaptureAsync();
+                        ToggleCameraPanel(false);
+                    });
+                    
+                }
+            }
+            decoding = false;
+        }
+
+        private async Task TerminateCaptureAsync()
+        {
+            player.Source = null;
+
+            _mediaSource?.Dispose();
+            _mediaSource = null;
+
+            if (_frameReader != null)
+            {
+                _frameReader.FrameArrived -= OnFrameArrived;
+                await _frameReader.StopAsync();
+                _frameReader?.Dispose();
+                _frameReader = null;
+            }
+
+            _capture?.Dispose();
+            _capture = null;
         }
 
         private void InitBarcodeReader() {
