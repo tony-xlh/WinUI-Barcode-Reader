@@ -98,7 +98,8 @@ namespace Barcode_Scanner
             CameraPanel.Visibility = on ? Visibility.Visible: Visibility.Collapsed;
             DefaultPanel.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
         }
-
+        
+        //https://stackoverflow.com/questions/76956862/how-to-scan-a-qr-code-in-winui-3-using-webcam
         private async Task InitializeCaptureAsync()
         {
             // get first capture device (change this if you want)
