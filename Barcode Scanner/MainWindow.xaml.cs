@@ -14,6 +14,7 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Dynamsoft;
 using Dynamsoft.DBR;
+using System.Text;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -32,10 +33,46 @@ namespace Barcode_Scanner
             this.InitBarcodeReader();
         }
 
-        private void myButton_Click(object sender, RoutedEventArgs e)
+        private async void pickImageButton_Click(object sender, RoutedEventArgs e)
         {
-            myButton.Content = "Clicked";
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            // Get the current window's HWND by passing in the Window object
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+
+            // Associate the HWND with the file picker
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+
+            picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.Thumbnail;
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".png");
+
+            Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
+            if (file != null) {
+                TextResult[] results = reader.DecodeFile(file.Path, "");
+                System.Diagnostics.Debug.WriteLine(results.Length);
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("Found "+results.Length
+                    .ToString() + " result(s).");
+                for (int i = 0; i < results.Length; i++)
+                {
+                    TextResult result = results[i];
+                    sb.Append(i + 1);
+                    sb.Append(". ");
+                    sb.Append(result.BarcodeFormatString);
+                    sb.Append(": ");
+                    sb.Append(result.BarcodeText);
+                    sb.Append('\n');
+                }
+                decodingResultsTextBox.Text = sb.ToString();
+            }
+            System.Diagnostics.Debug.WriteLine(file.DisplayName);
             System.Diagnostics.Debug.WriteLine("Clicked");
+        }
+
+        private void liveScanButton_Click(object sender, RoutedEventArgs e) {
+            System.Diagnostics.Debug.WriteLine("live scan Clicked");
         }
 
         private void InitBarcodeReader() {
