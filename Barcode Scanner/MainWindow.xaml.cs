@@ -12,18 +12,17 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using Dynamsoft;
+using Dynamsoft.Core;
+using Dynamsoft.CVR;
 using Dynamsoft.DBR;
+using Dynamsoft.License;
 using System.Text;
-using System.Reflection.PortableExecutable;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Windows.Media.Capture.Frames;
 using Windows.Media.Capture;
 using Windows.Media.Core;
 using Windows.Media.MediaProperties;
 using Windows.Storage.Streams;
-using System.Buffers.Text;
 using Windows.Graphics.Imaging;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -36,7 +35,7 @@ namespace Barcode_Scanner
     /// </summary>
     public sealed partial class MainWindow : Window
     {
-        public BarcodeReader Reader { get; set; }
+        public CaptureVisionRouter Router { get; set; }
         private MediaCapture _capture;
         private MediaFrameReader _frameReader;
         private MediaSource _mediaSource;
@@ -67,24 +66,55 @@ namespace Barcode_Scanner
 
             Windows.Storage.StorageFile file = await picker.PickSingleFileAsync();
             if (file != null) {
-                TextResult[] results = Reader.DecodeFile(file.Path, "");
-                System.Diagnostics.Debug.WriteLine(results.Length);
+                List<BarcodeResultItem> results = DecodeFile(file.Path);
                 DecodingResultsTextBox.Text = BuildResultsString(results);
             }
         }
 
-        private string BuildResultsString(TextResult[] results) {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Found " + results.Length
-                .ToString() + " result(s).");
-            for (int i = 0; i < results.Length; i++)
+        // Decode an image or a (multi-page) PDF file
+        private List<BarcodeResultItem> DecodeFile(string path)
+        {
+            List<BarcodeResultItem> allItems = new List<BarcodeResultItem>();
+            CapturedResult[] results = Router.CaptureMultiPages(path, PresetTemplate.PT_READ_BARCODES);
+            if (results != null)
             {
-                TextResult result = results[i];
+                foreach (CapturedResult result in results)
+                {
+                    DecodedBarcodesResult barcodesResult = result.GetDecodedBarcodesResult();
+                    if (barcodesResult != null)
+                    {
+                        allItems.AddRange(barcodesResult.GetItems());
+                    }
+                }
+            }
+            return allItems;
+        }
+
+        // Decode barcode(s) from image bytes in memory (e.g. a camera frame)
+        private List<BarcodeResultItem> DecodeBytes(byte[] bytes)
+        {
+            List<BarcodeResultItem> allItems = new List<BarcodeResultItem>();
+            CapturedResult result = Router.Capture(bytes, PresetTemplate.PT_READ_BARCODES);
+            DecodedBarcodesResult barcodesResult = result?.GetDecodedBarcodesResult();
+            if (barcodesResult != null)
+            {
+                allItems.AddRange(barcodesResult.GetItems());
+            }
+            return allItems;
+        }
+
+        private string BuildResultsString(List<BarcodeResultItem> results) {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Found " + results.Count
+                .ToString() + " result(s).");
+            for (int i = 0; i < results.Count; i++)
+            {
+                BarcodeResultItem result = results[i];
                 sb.Append(i + 1);
                 sb.Append(". ");
-                sb.Append(result.BarcodeFormatString);
+                sb.Append(result.GetFormatString());
                 sb.Append(": ");
-                sb.Append(result.BarcodeText);
+                sb.Append(result.GetText());
                 sb.Append('\n');
             }
             return sb.ToString();
@@ -95,12 +125,12 @@ namespace Barcode_Scanner
             await InitializeCaptureAsync();
         }
 
-        private void ToggleCameraPanel(bool on) 
+        private void ToggleCameraPanel(bool on)
         {
             CameraPanel.Visibility = on ? Visibility.Visible: Visibility.Collapsed;
             DefaultPanel.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
         }
-        
+
         //https://stackoverflow.com/questions/76956862/how-to-scan-a-qr-code-in-winui-3-using-webcam
         private async Task InitializeCaptureAsync()
         {
@@ -146,16 +176,16 @@ namespace Barcode_Scanner
                 await encoder.FlushAsync();
                 var bytes = new byte[stream.Size];
                 await stream.ReadAsync(bytes.AsBuffer(), (uint)stream.Size, InputStreamOptions.None);
-                TextResult[] results = Reader.DecodeFileInMemory(bytes, "");
-                System.Diagnostics.Debug.WriteLine(results.Length);
-                if (results.Length > 0)
+                List<BarcodeResultItem> results = DecodeBytes(bytes);
+                System.Diagnostics.Debug.WriteLine(results.Count);
+                if (results.Count > 0)
                 {
-                    DispatcherQueue.TryEnqueue(async () => { 
+                    DispatcherQueue.TryEnqueue(async () => {
                         DecodingResultsTextBox.Text = BuildResultsString(results);
                         await TerminateCaptureAsync();
                         ToggleCameraPanel(false);
                     });
-                    
+
                 }
             }
             decoding = false;
@@ -182,14 +212,15 @@ namespace Barcode_Scanner
 
         private void InitBarcodeReader() {
             string errorMsg;
-            EnumErrorCode errorCode = BarcodeReader.InitLicense("t0073oQAAACQUYF/x9rrKvXlLXTqx4ZcSmAZxrQ0Wdup4wSrA9cTE833mG4PB2q6PADieZ2scQd7NEVJ9LbY7AipZSK5QnFXf0H8iWQ==", out errorMsg);
-            if (errorCode != EnumErrorCode.DBR_SUCCESS)
+            // The license string here is a 1-day public trial license.
+            // You can apply for a 30-day trial license here: https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform
+            int errorCode = LicenseManager.InitLicense("DLS2eyJoYW5kc2hha2VDb2RlIjoiMjAwMDAxLTE2NDk4Mjk3OTI2MzUiLCJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSIsInNlc3Npb25QYXNzd29yZCI6IndTcGR6Vm05WDJrcEQ5YUoifQ==", out errorMsg);
+            if (errorCode != (int)EnumErrorCode.EC_OK && errorCode != (int)EnumErrorCode.EC_LICENSE_WARNING)
             {
                 // Add your code for license error processing;
                 System.Diagnostics.Debug.WriteLine(errorMsg);
             }
-            Reader = new BarcodeReader();
-            System.Diagnostics.Debug.WriteLine(Reader.GetVersion());
+            Router = new CaptureVisionRouter();
         }
     }
 }
