@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build WinUI 3 app
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore "Barcode Scanner/Barcode Scanner.csproj" -p:Platform=x64
+
+      - name: Build
+        # The app targets net6.0-windows10.0.19041.0; the Windows App SDK and the
+        # WinRT projections come from NuGet, so no extra workload is required.
+        run: >
+          dotnet build "Barcode Scanner/Barcode Scanner.csproj"
+          -c Release -p:Platform=x64 --no-restore
