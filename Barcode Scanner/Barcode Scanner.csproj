@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dynamsoft.DotNet.BarcodeReader.Bundle" Version="11.6.3000" />
+    <PackageReference Include="Dynamsoft.DotNet.BarcodeReader.Bundle" Version="11.6.4000" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.3.230502000" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.755" />
     <Manifest Include="$(ApplicationManifest)" />
